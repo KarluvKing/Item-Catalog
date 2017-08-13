@@ -1,8 +1,8 @@
 <html>
 <body>
-<h1> New Categorie </h1>
+<h1> New item {{categorie.title}} </h1>
 
-<form action="{{url_for('newCategorie')}}" method = 'POST'>
+<form action="{{ url_for('newCategorieItem', categorie_id=categorie_id)}}" method = 'post'>
 
 <p>Name:</p>
 
