@@ -117,6 +117,36 @@ def gconnect():
     print "done!"
     return output
 
+@app.route('/gdisconnect')
+def gdisconnect():
+    access_token = login_session.get('access_token')
+    if access_token is None:
+        print 'Access Token is None'
+        response = make_response(json.dumps('Current user not connected.'), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    print 'In gdisconnect access token is %s', access_token
+    print 'User name is: '
+    print login_session['username']
+    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % login_session['access_token']
+    h = httplib2.Http()
+    result = h.request(url, 'GET')[0]
+    print 'result is '
+    print result
+    if result['status'] == '200':
+        del login_session['access_token']
+        del login_session['gplus_id']
+        del login_session['username']
+        del login_session['email']
+        del login_session['picture']
+        response = make_response(json.dumps('Successfully disconnected.'), 200)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    else:
+        response = make_response(json.dumps('Failed to revoke token for given user.', 400))
+        response.headers['Content-Type'] = 'application/json'
+        return response    
+
 ''' Show all categories '''
 @app.route('/')
 @app.route('/categories')
@@ -135,6 +165,8 @@ def categoriesJSON():
 @app.route('/categories/new', methods=['GET', 'POST'])
 def newCategorie():
     #return "Add new categorie"
+    if 'username' not in login_session:
+    	return redirect ('/login')
     if request.method == 'POST':
         newCategorie = Categories(title=request.form['name'], 
         	description=request.form['description'])
@@ -148,6 +180,8 @@ def newCategorie():
 @app.route('/categories/<int:categorie_id>/edit', methods=['GET', 'POST'])
 def editCategorie(categorie_id):
 	# return "EditCategorie WORK! %s" % categorie_id
+	if 'username' not in login_session:
+		return redirect ('/login')
 	editedCategorie = session.query(Categories).filter_by(id=categorie_id).one()
 	if request.method == 'POST':
 		if request.form['name']:
@@ -164,6 +198,8 @@ def editCategorie(categorie_id):
 @app.route('/categories/<int:categorie_id>/delete', methods=['GET', 'POST'])
 def deleteCategorie(categorie_id):
 	# return "DeleteCategorie WORK! %s" % categorie_id
+	if 'username' not in login_session:
+		return redirect ('/login')
 	categorieToDelete = session.query(Categories).filter_by(id=categorie_id).one()
 	if request.method == 'POST':
 		session.delete(categorieToDelete)
@@ -192,6 +228,8 @@ def categoriesItemsJSON(categorie_id):
 @app.route('/categories/<int:categorie_id>/items/new', methods=['GET', 'POST'])
 def newCategorieItem(categorie_id):
     #return "NewCategorieItem WORK! %s" % categorie_id
+    if 'username' not in login_session:
+    	return redirect ('/login')
     categorie = session.query(Categories).filter_by(id=categorie_id).one()
     items = session.query(CategorieItem).filter_by(categorie_id=categorie_id)
     if request.method == 'POST':
@@ -207,6 +245,8 @@ def newCategorieItem(categorie_id):
 @app.route('/items/<int:item_id>/edit', methods=['GET', 'POST'])
 def editCategorieItem(item_id):
 	#return "EditCategorieItem WORK! %s %s" % (categorie_id, item_id)
+	if 'username' not in login_session:
+		return redirect ('/login')
 	editedItem = session.query(CategorieItem).filter_by(id=item_id).one()
 	if request.method == 'POST':
 		if request.form['name']:
@@ -223,6 +263,8 @@ def editCategorieItem(item_id):
 @app.route('/items/<int:item_id>/delete', methods=['GET', 'POST'])
 def deleteCategorieItem(item_id):
 	#return "DeleteCategorieItem WORK! %s %s" % (categorie_id, item_id)
+	if 'username' not in login_session:
+		return redirect ('/login')
 	itemToDelete = session.query(CategorieItem).filter_by(id=item_id).one()
 	if request.method == 'POST':
 		session.delete(itemToDelete)
