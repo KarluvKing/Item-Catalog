@@ -25,6 +25,25 @@ Base.metadata.bind = engine
 DBSession = sessionmaker(bind=engine)
 session = DBSession()
 
+def createUser(login_session):
+    newUser = User(name=login_session['username'], email=login_session[
+                   'email'], picture=login_session['picture'])
+    session.add(newUser)
+    session.commit()
+    user = session.query(User).filter_by(email=login_session['email']).one()
+    return user.id
+
+def getUserInfo(user_id):
+    user = session.query(User).filter_by(id=user_id).one()
+    return user
+
+def getUserID(email):
+    try:
+        user = session.query(User).filter_by(email=email).one()
+        return user.id
+    except:
+        return None
+
 # Create anti-forgery state token
 @app.route('/login')
 def showLogin():
@@ -106,6 +125,12 @@ def gconnect():
     login_session['picture'] = data['picture']
     login_session['email'] = data['email']
 
+    # see if user exists, if it doesn't make a new one
+    user_id = getUserID(login_session['email'])
+    if not user_id:
+    	user_id = createUser(login_session)
+    login_session['user_id'] = user_id
+
     output = ''
     output += '<h1>Welcome, '
     output += login_session['username']
@@ -153,7 +178,10 @@ def gdisconnect():
 def showCategories():
     #return "All Categories and descriptions"
     categories = session.query(Categories).all()
-    return render_template('categories.html', categories = categories)
+    if 'username' not in login_session:
+    	return render_template('publiccategories.html', categories = categories)
+    else:
+        return render_template('categories.html', categories = categories)
 
 ''' Show a categorie in JSON Format '''
 @app.route('/categories/JSON')
@@ -169,7 +197,7 @@ def newCategorie():
     	return redirect ('/login')
     if request.method == 'POST':
         newCategorie = Categories(title=request.form['name'], 
-        	description=request.form['description'])
+        	description=request.form['description'], user_id=login_session['user_id'])
         session.add(newCategorie)
         session.commit()
         return redirect(url_for('showCategories'))
@@ -183,6 +211,8 @@ def editCategorie(categorie_id):
 	if 'username' not in login_session:
 		return redirect ('/login')
 	editedCategorie = session.query(Categories).filter_by(id=categorie_id).one()
+	if editedCategorie.user_id != login_session['user_id']:
+		return "<script>function myFunction() {alert('You are not authorized to edit this categorie. Please create your own categorie in order to edit.');}</script><body onload='myFunction()''>"
 	if request.method == 'POST':
 		if request.form['name']:
 			editedCategorie.title = request.form['name']
@@ -201,6 +231,8 @@ def deleteCategorie(categorie_id):
 	if 'username' not in login_session:
 		return redirect ('/login')
 	categorieToDelete = session.query(Categories).filter_by(id=categorie_id).one()
+	if categorieToDelete.user_id != login_session['user_id']:
+		return "<script>function myFunction() {alert('You are not authorized to delete this categorie. Please create your own categorie in order to delete.');}</script><body onload='myFunction()''>"
 	if request.method == 'POST':
 		session.delete(categorieToDelete)
 		session.commit()
@@ -213,9 +245,13 @@ def deleteCategorie(categorie_id):
 def categorieItems(categorie_id):
     #return "Categorie ITEMS WORK! %s" % categorie_id
     categorie = session.query(Categories).filter_by(id=categorie_id).one()
+    creator = getUserInfo(categorie.user_id)
     items = session.query(CategorieItem).filter_by(categorie_id=categorie_id)
-    return render_template(
-        'categorieitem.html', categorie=categorie, items=items, categorie_id=categorie_id)
+    if 'username' not in login_session or creator.id != login_session['user_id']:
+    	return render_template('publiccategorieitem.html', items=items, categorie=categorie, creator=creator, categorie_id=categorie_id)
+    else:
+    	return render_template(
+        'categorieitem.html', categorie=categorie, items=items, creator=creator, categorie_id=categorie_id)
 
 ''' Show a categorie items in JSON Format '''
 @app.route('/categories/<int:categorie_id>/items/JSON')
@@ -234,7 +270,7 @@ def newCategorieItem(categorie_id):
     items = session.query(CategorieItem).filter_by(categorie_id=categorie_id)
     if request.method == 'POST':
         newItem = CategorieItem(title=request.form['name'], description=request.form[
-                           'description'], categorie_id=categorie_id)
+                           'description'], categorie_id=categorie_id, user_id=login_session['user_id'])
         session.add(newItem)
         session.commit()
         return redirect(url_for('categorieItems', categorie=categorie, items=items, categorie_id=categorie_id))
@@ -248,6 +284,8 @@ def editCategorieItem(item_id):
 	if 'username' not in login_session:
 		return redirect ('/login')
 	editedItem = session.query(CategorieItem).filter_by(id=item_id).one()
+	if editedItem.user_id != login_session['user_id']:
+		return "<script>function myFunction() {alert('You are not authorized to edit this restaurant. Please create your own restaurant in order to edit.');}</script><body onload='myFunction()''>"
 	if request.method == 'POST':
 		if request.form['name']:
 			editedItem.title = request.form['name']
@@ -266,6 +304,8 @@ def deleteCategorieItem(item_id):
 	if 'username' not in login_session:
 		return redirect ('/login')
 	itemToDelete = session.query(CategorieItem).filter_by(id=item_id).one()
+	if itemToDelete.user_id != login_session['user_id']:
+		return "<script>function myFunction() {alert('You are not authorized to edit this item. Please create your own item in order to edit.');}</script><body onload='myFunction()''>"
 	if request.method == 'POST':
 		session.delete(itemToDelete)
 		session.commit()

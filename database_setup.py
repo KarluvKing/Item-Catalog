@@ -19,6 +19,8 @@ class Categories(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String(250), nullable=False)
     description = Column(String(250), nullable=False)
+    user_id = Column(Integer, ForeignKey('user.id'))
+    user = relationship(User)
 
     @property
     def serialize(self):
@@ -37,6 +39,8 @@ class CategorieItem(Base):
     description = Column(String(250))
     categorie_id = Column(Integer, ForeignKey('categories.id'))
     categorie = relationship(Categories)
+    user_id = Column(Integer, ForeignKey('user.id'))
+    user = relationship(User)
 
     @property
     def serialize(self):
