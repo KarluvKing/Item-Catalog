@@ -231,11 +231,19 @@ def deleteCategorie(categorie_id):
 	if 'username' not in login_session:
 		return redirect ('/login')
 	categorieToDelete = session.query(Categories).filter_by(id=categorie_id).one()
+	itemsCategorieToDelete = session.query(CategorieItem).filter_by(categorie_id=categorie_id).all()
+
 	if categorieToDelete.user_id != login_session['user_id']:
 		return "<script>function myFunction() {alert('You are not authorized to delete this categorie. Please create your own categorie in order to delete.');}</script><body onload='myFunction()''>"
 	if request.method == 'POST':
+		for i in itemsCategorieToDelete: 
+			print i
+			session.delete(i)
+			session.commit()
 		session.delete(categorieToDelete)
 		session.commit()
+		#session.delete(itemsCategorieToDelete)
+		#session.commit()
 		return redirect(url_for('showCategories'))
 	else:
 		return render_template('deletecategorie.html', categorie=categorieToDelete, categorie_id=categorie_id)
